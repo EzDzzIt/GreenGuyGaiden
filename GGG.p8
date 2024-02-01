@@ -43,18 +43,18 @@ end
 -->8
 --player movement code
 function move_player()
-	if grnd then
-		if btn(0) then
-			xsp = - 1
-			if btn(1) then
-				xsp = 0
-			end
-		elseif btn(1) then
-				xsp = 1
-		else
-				xsp = 0
-		end
+
+	if btn(1) then --➡️ wins!
+		xsp = 1
+	--	if btn(1) then
+	--		xsp = 0
+	--	end
+	elseif btn(0) then
+			xsp = -1
+	else
+			xsp = 0
 	end
+
 --sprinting?
 --	if btn(5) and xsp > 0 then
 --		xsp = 2
