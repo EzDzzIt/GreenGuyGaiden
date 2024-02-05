@@ -5,11 +5,14 @@ __lua__
 
 function _init()
 	cls(0)
-	_player()
-	_star()
-	--game parameters
+--setup object arrays
+	player={}
+	star={}
+	_setup_player(player)
+	_setup_star(star)
+--game parameters
 	grav = 8
-	--cooldown set, height set, starting cd
+	--cooldown limit, jmp height limit
 	jmpclim,jmplim  = 8,0
 	--counter
 	t = 0
@@ -17,8 +20,8 @@ end
 
 function _update60()
 	--you fell into a pit
-	if player_y >= 128 then
-		dead = true
+	if player.y >= 128 then
+		player.dead = true
 	end
 	--process actors
 	update_player()
@@ -27,9 +30,9 @@ function _update60()
 	animate_star()
 	
 	--debugging ground
-	if player_y >= 104 then
-		player_y = 104
-		grnd = true
+	if player.y >= 104 then
+		player.y = 104
+		player.grnd = true
 	end
 	
 	--t is my counter, dude
@@ -41,9 +44,9 @@ function _update60()
 function _draw()
 	cls(12)
 	map(0,0,0,64)
-	spr(player_spr,player_x,player_y,1,1,player_dir)
-	if star_exists or star_charging then
-		spr(star_spr,star_x,star_y)
+	spr(player.spr,player.x,player.y,1,1,player.dir)
+	if star.exists or star.charging then
+		spr(star.spr,star.x,star.y)
 	end
 	--debug vars
 	debug()
@@ -54,187 +57,205 @@ end
 --player movement and actions
 function update_player()
 
-	if btn(1) then --➡️ wins!
-		xsp = 1
-	--	if btn(1) then
-	--		xsp = 0
-	--	end
+	if btn(1) then --➡️ wins! lol
+		player.xsp = 1
 	elseif btn(0) then
-			xsp = -1
+			player.xsp = -1
 	else
-			xsp = 0
+			player.xsp = 0
 	end
 
 --check direction/flip sprite
-	if xsp > 0 then
-		player_dir = false
-	elseif xsp < 0 then
-		player_dir = true
+	if player.xsp > 0 then
+		player.dir = false
+	elseif player.xsp < 0 then
+		player.dir = true
 	end
 	
 --move x
-player_x = player_x + xsp
+player.x = player.x + player.xsp
 
 --gravity
-if grnd then
-	ysp = 0
+if player.grnd then
+	player.ysp = 0
 else
 	--accel limit?
 	if t%grav == 0 then
-		if ysp < 5 then
-			ysp = ysp + 1
+		if player.ysp < 5 then
+			player.ysp+=1
 		end
 	end
 end
 
 --jump logic
 --cooldown on the ground
-if jmpcool > 0 and grnd then
-	jmpcool = jmpcool - 1
-	jmp = false
+if player.jmpcool > 0 and player.grnd then
+	player.jmpcool = player.jmpcool - 1
+	player.jmp = false
 end
 --first time button pressed
-if(btn(4)) and grnd and jmpcool == 0 then
-	if jmp == false then
-		jmpcool = jmpclim
+if(btn(4)) and player.grnd and player.jmpcool == 0 then
+	if player.jmp == false then
+		player.jmpcool = jmpclim
 		--play sound on jump?--
 	end
-	ysp = -2
-	jmp = true
-	grnd = false
-	jmplim = 0
+	player.ysp=-2
+	player.jmp=true
+	player.grnd=false
+	jmplim=0
 end
 --holding down the jmp button in air
-if jmp and btn(4) and jmplim < 10 then
-	ysp = -2
-	jmplim += 1
+if player.jmp and btn(4) and jmplim < 10 then
+	player.ysp=-2
+	jmplim+=1
 else
 --no double jumping
-	jmplim = 99
+	jmplim=99
 end
 
 --move y
-player_y = player_y + ysp
+player.y+=player.ysp
 
 end
 
 function update_star()
 --button initially pressed
-	if not star_exists then
+	if not star.exists then
 		if btn(5) then
-			if star_stup < 45 then
-				star_stup += 1
-				star_charging = true
-				star_x = player_x
-				star_y = player_y-8
-			elseif star_stup >= 45 then
-				star_stup = 0
-				star_exists = true
-				star_x = player_x
-				star_y = player_y-8
+			if star.stup <45 then
+				star.stup+=1
+				star.charging = true
+				star.x= player.x
+				star.y= player.y-8
+			elseif star.stup >= 45 then
+				star.stup = 0
+				star.exists = true
+				star.x = player.x
+				star.y = player.y-8
 			end
 		else
-			star_stup = 0
-			star_charging = false
-			stxsp = 0
-			stysp = 0
+			star.stup = 0
+			star.charging = false
+			star.xsp = 0
+			star.ysp = 0
 		end
 --star already exists and button held
-	elseif btn(5) and star_cnt==0 and star_charging then 
-		star_x = player_x
-		star_y = player_y-8
+	elseif btn(5) and star.cnt==0 and star.charging then 
+		star.x = player.x
+		star.y = player.y-8
 --star release	
-	elseif star_charging and star_cnt==0 then
-		star_cnt = starlim
-		if player_dir then
-			stxsp = -2
+	elseif star.charging and star.cnt==0 then
+		star.cnt = star.lim
+		if player.dir then
+			star.xsp = -2
 		else
-			stxsp = 2
+			star.xsp = 2
 		end
-		stysp = 1
-		star_charging = false
-	elseif star_cnt > 0 then
+		star.ysp = 1
+		star.charging = false
+	elseif star.cnt > 0 then
 --star physics hack
-		if star_y > 104 then
-			stysp = -1
+		if star.y > 104 then
+			star.ysp = -1
 		end
 --move star x and y
-		star_x += stxsp
-		star_y += stysp
-		star_cnt -= 1
+		star.x+=star.xsp
+		star.y+=star.ysp
+		star.cnt-=1
 	else
 --kill star
-		star_exists = false
+		star.exists = false
 	end
 end
 -->8
 --animation
 function animate_player()
 --state 0: idle
-	if xsp == 0 and ysp == 0 and jmpcool == 0 then
-		player_spr = 1
+	if player.xsp == 0 and player.ysp == 0 and player.jmpcool == 0 then
+		player.spr = 1
 --state 1: walking on flat grnd
-	elseif xsp != 0 and grnd and jmpcool == 0 then
+	elseif player.xsp != 0 and player.grnd and player.jmpcool == 0 then
 	--ani speed
 		if t%8 == 0 then
-			player_spr += 1
+			player.spr += 1
 			--clamp animation
-			if player_spr > 3 then
-				player_spr = 1
+			if player.spr > 3 then
+				player.spr = 1
 			end
 		end
 --state 2: jmping up
-	elseif jmp and ysp < 0 then
-		player_spr = 4
+	elseif player.jmp and player.ysp < 0 then
+		player.spr = 4
 --state 3: falling
-	elseif jmp and ysp > 0 then
-		player_spr = 5
+	elseif player.jmp and player.ysp > 0 then
+		player.spr = 5
 --state 4: jmp recovery
-	elseif grnd and jmpcool > 0 then
-		player_spr = 6
+	elseif player.grnd and player.jmpcool > 0 then
+		player.spr = 6
 	end
 end
 
 function animate_star()
 --state 0: charging star up
-	if star_charging and star_stup>0 then
+	if star.charging and star.stup>0 then
+	if star.stup == 1 then
+		star.spr = 17
+	end
 	--ani speed
 		if t%10 == 0 then
-			star_spr += 1
+			star.spr += 1
 			--clamp animation
-			if star_spr > 18 then
-				star_spr = 17
+			if star.spr > 18 then
+				star.spr = 17
 			end
 		end
 --state 1: ready to fire, flash
-	elseif star_charging then
+	elseif star.charging then
 	--ani speed
 		if t%30 == 0 then
-			star_spr = 19
+			star.spr = 19
 		elseif t%15 == 0 then
-			star_spr = 16
+			star.spr = 16
 		end
 --state 2: star flying, static
 	else
-		star_spr = 16
+--ani speed
+		if t%30 == 0 then
+			star.spr = 20
+		elseif t%15 == 0 then
+			star.spr = 16
+		end
 	end
 end
 -->8
 --object code
-function _player()
+function _setup_player(player)
 	--define player obj data
-	player_x, player_y, xsp, ysp = 10,104,0,0
-	player_spr, player_dir = 1,false
-	jmp, jmpcool = false,0
-	grnd, dead = true,false
+	player.x=10
+	player.y=104
+	player.xsp=0
+	player.ysp=0
+	player.dir=false
+	player.spr=1
+	player.jmp=false
+	player.jmpcool=0
+	player.grnd=true
+	player.dead=false
 end
 
-function _star()
+function _setup_star(star)	
 	--define star obj data
-	star_x, star_y, stxsp, stysp = 0,0,0,0
-	star_spr, star_exists = 16, false
-	starlim, star_cnt, star_stup = 120,0,0
-	star_charging = false
+	star.x=0
+	star.y=0
+	star.xsp=0
+	star.ysp=0
+	star.dir=false
+	star.spr=16
+	star.exists=false
+	star.lim=45
+	star.cnt=0
+	star.stup=0
+	star.charging=false
 end
 -->8
 --soundfx
@@ -244,13 +265,10 @@ end
 -->8
 --debug
 function debug()
-	print(player_x)
-	print(player_y)
-	print("grnd = " ..tostr(grnd))
-	print("jmp = " ..tostr(jmp))
-	print("ysp " ..tostr(ysp))
-	print("star " ..tostr(star_exists))
-	print("stup " ..tostr(star_stup))
+	print("stup: " .. tostr(star.stup))
+	print("cnt: " .. tostr(star.cnt))
+	print("star xsp: " .. tostr(star.xsp))
+	
 end
 __gfx__
 00000000c9c333ccc9c333ccc9c333ccc9c333ccc9c333ccccccccccffccccffcccccccc55555555cccccccc0000000000000000000000000000000000000000
@@ -261,14 +279,14 @@ __gfx__
 007007003b3bb3b33bb3b3b33bb3b3b3333bbbb3cc3b33b33bbbbbb3cfffffcccccccccccfffffccc557575c0000000000000000000000000000000000000000
 00000000c3bbbb3cc33bbbb6633bbbbcc36bb6b3c6bbbbb63b3bb3b3fffffcccccccccccfffffcccc555555c0000000000000000000000000000000000000000
 0000000066333366c663336cc633336cc663366ccc63366cc36bb63cffffccccccccccccffffcccccc5cc5cc0000000000000000000000000000000000000000
-cccacccaaaccccaacaccaccaccc9ccc9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-accaccacaacaccaaaaaccaaa9cc9cc9c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-cacacaccccccaccccaaccaacc9c9c9cc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-ccaaaccccacccccaaacccccccc999ccc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-aaaaaaaaccccccccccaacaaa99999999000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-ccaaacccccccccccccaacaaacc999ccc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-cacacaccaaacacaacaaccaacc9c9c9cc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-accaccacaaccccaacacaccac9cc9cc9c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccacccaaaccccaacaccaccaccc9ccc9ccc7ccc70000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+accaccacaacaccaaaaaccaaa9cc9cc9c7cc7cc7c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cacacaccccccaccccaaccaacc9c9c9ccc7c7c7cc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccaaaccccacccccaaacccccccc999ccccc777ccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+aaaaaaaaccccccccccaacaaa99999999777777770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccaaacccccccccccccaacaaacc999ccccc777ccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cacacaccaaacacaacaaccaacc9c9c9ccc7c7c7cc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+accaccacaaccccaacacaccac9cc9cc9c7cc7cc7c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
