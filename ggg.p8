@@ -2,7 +2,7 @@ pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
 --main engine functions
-
+--testing git functionality
 function _init()
 	cls(0)
 --setup object arrays
@@ -28,10 +28,12 @@ function _update60()
 	if player.y >= 128 then
 		player.dead = true
 	end
-	--debugging ground
-	if player.y >= 104 then
-		player.y = 104
+	--check for ground collision
+	if mget(flr(player.x/8),ceil((player.y/16))) == 9 or player.y==104 then
 		player.grnd = true
+		player.ysp = 0
+	else
+		player.grnd = false
 	end
 	
 	--t is my counter, dude
@@ -98,7 +100,7 @@ if(btn(4)) and player.grnd and player.jmpcool == 0 then
 		player.jmpcool = jmpclim
 		--play sound on jump?--
 	end
-	player.ysp=-2
+	player.ysp=-1
 	player.jmp=true
 	player.grnd=false
 	jmplim=0
@@ -264,10 +266,12 @@ end
 -->8
 --debug
 function debug()
-	print("stup: " .. tostr(star.stup))
-	print("cnt: " .. tostr(star.cnt))
-	print("star xsp: " .. tostr(star.xsp))
-	
+	print("x: " .. tostr(player.x))
+	print("y: " .. tostr(player.y))
+	print("grnd: " .. tostr(player.grnd))
+	print(mget(flr(player.x/8),ceil((player.y)/16)-1))	
+	print(flr(player.x/8))
+	print(ceil((player.y/8)))
 end
 __gfx__
 00000000090333000903330009033300090333000903330000000000ffccccffcccccccc55555555000000000000000000000000000000000000000000000000
