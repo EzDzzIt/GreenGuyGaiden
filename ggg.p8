@@ -2,7 +2,7 @@ pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
 --main engine functions
---testing git functionality
+
 function _init()
 	cls(0)
 --setup object arrays
@@ -20,6 +20,7 @@ end
 
 function _update60()
 	--process actors
+	check_collisions()
 	update_player()
 	update_star()
 	animate_player()
@@ -29,9 +30,8 @@ function _update60()
 		player.dead = true
 	end
 	--check for ground collision
-	if mget(flr(player.x/8),ceil((player.y/16))) == 9 or player.y==104 then
+	if player.ycol then
 		player.grnd = true
-		player.ysp = 0
 	else
 		player.grnd = false
 	end
@@ -73,49 +73,53 @@ function update_player()
 		player.dir = true
 	end
 	
---move x
-player.x = player.x + player.xsp
-
---gravity
-if player.grnd then
-	player.ysp = 0
-else
-	--accel limit?
-	if t%grav == 0 then
-		if player.ysp < 5 then
-			player.ysp+=1
+	--move x
+	if not player.xcol then
+		player.x = player.x + player.xsp
+	end
+	
+	--gravity
+	if player.grnd then
+		player.ysp = 0
+	else
+		--accel limit?
+		if t%grav == 0 then
+			if player.ysp < 5 then
+				player.ysp+=1
+			end
 		end
 	end
-end
-
---jump logic
---cooldown on the ground
-if player.jmpcool > 0 and player.grnd then
-	player.jmpcool = player.jmpcool - 1
-	player.jmp = false
-end
---first time button pressed
-if(btn(4)) and player.grnd and player.jmpcool == 0 then
-	if player.jmp == false then
-		player.jmpcool = jmpclim
-		--play sound on jump?--
+	
+	--jump logic
+	--cooldown on the ground
+	if player.jmpcool > 0 and player.grnd then
+		player.jmpcool = player.jmpcool - 1
+		player.jmp = false
 	end
-	player.ysp=-1
-	player.jmp=true
-	player.grnd=false
-	jmplim=0
-end
---holding down the jmp button in air
-if player.jmp and btn(4) and jmplim < 10 then
-	player.ysp=-2
-	jmplim+=1
-else
---no double jumping
-	jmplim=99
-end
+	--first time button pressed
+	if(btn(4)) and player.grnd and player.jmpcool == 0 then
+		if player.jmp == false then
+			player.jmpcool = jmpclim
+			--play sound on jump?--
+		end
+		player.ysp=-1
+		player.jmp=true
+		player.grnd=false
+		jmplim=0
+	end
+	--holding down the jmp button in air
+	if player.jmp and btn(4) and jmplim < 10 then
+		player.ysp=-2
+		jmplim+=1
+	else
+	--no double jumping
+		jmplim=99
+	end
 
 --move y
-player.y+=player.ysp
+	if not player.ycol then
+		player.y+=player.ysp
+	end
 
 end
 
@@ -173,7 +177,7 @@ end
 function animate_player()
 --state 0: idle
 	if player.xsp == 0 and player.ysp == 0 and player.jmpcool == 0 then
-		player.spr = 1
+			player.spr = 1
 --state 1: walking on flat grnd
 	elseif player.xsp != 0 and player.grnd and player.jmpcool == 0 then
 	--ani speed
@@ -234,6 +238,8 @@ function _setup_player(player)
 	--define player obj data
 	player.x=10
 	player.y=104
+	player.xcol=false
+	player.ycol=true
 	player.xsp=0
 	player.ysp=0
 	player.dir=false
@@ -248,6 +254,8 @@ function _setup_star(star)
 	--define star obj data
 	star.x=0
 	star.y=0
+	star.xcel=0
+	star.ycel=0
 	star.xsp=0
 	star.ysp=0
 	star.dir=false
@@ -270,8 +278,24 @@ function debug()
 	print("y: " .. tostr(player.y))
 	print("grnd: " .. tostr(player.grnd))
 	print(mget(flr(player.x/8),ceil((player.y)/16)-1))	
-	print(flr(player.x/8))
-	print(ceil((player.y/8)))
+	print(player.xcol)
+	print(player.ycol)
+end
+-->8
+--collisions
+function check_collisions()
+	if player.x == 64 then
+		player.xcol = true
+		player.x-=3
+	else
+		player.xcol = false
+	end
+	if player.y == 104 then
+		player.ycol = true
+		player.y-=0
+	else
+		player.ycol = false
+	end
 end
 __gfx__
 00000000090333000903330009033300090333000903330000000000ffccccffcccccccc55555555000000000000000000000000000000000000000000000000
@@ -282,14 +306,14 @@ __gfx__
 007007003b3bb3b33bb3b3b33bb3b3b3333bbbb3003b33b33bbbbbb3cfffffcccccccccccfffffcc055757500000000000000000000000000000000000000000
 0000000003bbbb30033bbbb6633bbbb0036bb6b306bbbbb63b3bb3b3fffffcccccccccccfffffccc055555500000000000000000000000000000000000000000
 000000006633336606633360063333600663366000633660036bb630ffffccccccccccccffffcccc005005000000000000000000000000000000000000000000
-000a000aaa0000aa0a00a00a00090009000700070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-a00a00a0aa0a00aaaaa00aaa90090090700700700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0a0a0a000000a0000aa00aa009090900070707000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00aaa0000a00000aaa00000000999000007770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-aaaaaaaa0000000000aa0aaa99999999777777770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00aaa0000000000000aa0aaa00999000007770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0a0a0a00aaa0a0aa0aa00aa009090900070707000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-a00a00a0aa0000aa0a0a00a090090090700700700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000a000aaa0000aa0a00a00a00090009000700070903330000000000000000000000000000000000000000000000000000000000000000000000000000000000
+a00a00a0aa0a00aaaaa00aaa9009009070070070089bb33000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0a0a0a000000a0000aa00aa0090909000707070003bbb33000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00aaa0000a00000aaa00000000999000007770003bbbbb3000000000000000000000000000000000000000000000000000000000000000000000000000000000
+aaaaaaaa0000000000aa0aaa99999999777777773bbbbbb300000000000000000000000000000000000000000000000000000000000000000000000000000000
+00aaa0000000000000aa0aaa00999000007770003b3bb3b300000000000000000000000000000000000000000000000000000000000000000000000000000000
+0a0a0a00aaa0a0aa0aa00aa0090909000707070003bbbb3000000000000000000000000000000000000000000000000000000000000000000000000000000000
+a00a00a0aa0000aa0a0a00a090090090700700706633336600000000000000000000000000000000000000000000000000000000000000000000000000000000
 __gff__
 0000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
