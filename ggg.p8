@@ -2,15 +2,23 @@ pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
 --main engine functions
---githubtest
+
 function _init()
 	cls(0)
+	gstate = 0 --0 is start, 1 is play, 2 us gameover
+	t=0 --counter
+	txcolor=0 --start screen text
+end
+
+function _start()
+		cls(0)
 --setup object arrays
 	player={}
 	star={}
 	_setup_player(player)
 	_setup_star(star)
 --game parameters
+	gstate = 1 --0 is start, 1 is play, 2 us gameover
 	grav = 8
 	--cooldown limit, jmp height limit
 	jmpclim,jmplim  = 8,0
@@ -19,15 +27,41 @@ function _init()
 end
 
 function _update60()
-	--process actors
-	check_collisions()
+	if gstate==1 then
+		_update_game60()
+	elseif gstate==0 then
+		_update_start()
+	elseif gstate==2 then
+		_update_over()
+	end
+end
+
+function _draw()
+	if gstate==1 then
+		_draw_game()
+	elseif gstate==0 then
+		_draw_start()
+	elseif gstate==2 then
+		_draw_over()
+	end
+end
+
+function _update_game60()
+	
 	update_player()
 	update_star()
 	animate_player()
 	animate_star()
+	check_collisions()
+	
 	--you fell into a pit
 	if player.y >= 128 then
 		player.dead = true
+	end
+	--are we dead?
+	if player.dead == true then
+		cls(0)
+		gstate=2 --game over
 	end
 	--check for ground collision
 	if player.ycol then
@@ -35,14 +69,14 @@ function _update60()
 	else
 		player.grnd = false
 	end
-	
 	--t is my counter, dude
-	t = t + 1
-	if (t < 0) then
+	t+=1
+	if (t > 120) then
 		t = 0
 	end
-	
-function _draw()
+end
+
+function _draw_game()
 	cls(12)
 	map(0,0,0,64)
 	spr(player.spr,player.x,player.y,1,1,player.dir)
@@ -53,6 +87,40 @@ function _draw()
 	debug()
 end
 
+--start/gameover screens
+
+function _draw_start()
+	cls(5)
+	print("◆➡️░★★ ▒⬆️⧗⧗🅾️♪",16,64,txcolor)
+	print(t)
+end
+
+function _update_start()
+	if btnp(4) or btnp(5) then
+		_start()
+	end
+	--animation on start screen
+	t+=1
+	if (t > 120) then
+		t = 1
+	end
+	if t%60==0 then
+		txcolor=3
+	end
+	if t%120==0 then
+		txcolor=0
+	end
+end
+
+function _draw_over()
+	cls(6)
+	print("●█😐░ 🅾️ˇ░➡️",16,64)
+end
+
+function _update_over()
+	if btnp(4) or btnp(5) then
+		gstate=0
+	end
 end
 -->8
 --player movement and actions
@@ -76,6 +144,8 @@ function update_player()
 	--move x
 	if not player.xcol then
 		player.x = player.x + player.xsp
+	elseif player.xcol and player.xsp != 0 then
+		sfx(1) --play collision sound
 	end
 	
 	--gravity
@@ -101,6 +171,7 @@ function update_player()
 		if player.jmp == false then
 			player.jmpcool = jmpclim
 			--play sound on jump?--
+			sfx(0)
 		end
 		player.ysp=-1
 		player.jmp=true
@@ -117,9 +188,7 @@ function update_player()
 	end
 
 --move y
-	if not player.ycol then
 		player.y+=player.ysp
-	end
 
 end
 
@@ -177,7 +246,12 @@ end
 function animate_player()
 --state 0: idle
 	if player.xsp == 0 and player.ysp == 0 and player.jmpcool == 0 then
+--state 0.5: lookin' up
+		if btn(2) then
+			player.spr = 4
+		else
 			player.spr = 1
+		end
 --state 1: walking on flat grnd
 	elseif player.xsp != 0 and player.grnd and player.jmpcool == 0 then
 	--ani speed
@@ -269,7 +343,7 @@ end
 -->8
 --soundfx
 function sound()
-	sfx(0)
+	sfx(0) --jump sound?
 end
 -->8
 --debug
@@ -278,21 +352,21 @@ function debug()
 	print("y: " .. tostr(player.y))
 	print("grnd: " .. tostr(player.grnd))
 	print(mget(flr(player.x/8),ceil((player.y)/16)-1))	
-	print(player.xcol)
+	print("xcol: " .. tostr(player.xcol))
 	print(player.ycol)
 end
 -->8
 --collisions
 function check_collisions()
-	if player.x == 64 then
+	if player.x == 64-7 and not player.dir then
 		player.xcol = true
-		player.x-=3
+		player.x=64-7
 	else
 		player.xcol = false
 	end
-	if player.y == 104 then
+	if player.y + player.ysp >= 104 then
 		player.ycol = true
-		player.y-=0
+		player.y=104
 	else
 		player.ycol = false
 	end
@@ -327,4 +401,6 @@ __map__
 0909090909090909070707070707070700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0707070707070707070707070707070700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
-60010000015500655006550065500655007550075500755007550095500a5500d550115501455017550195501b5501c5501c5501b550195501755014550117500e7500c7500a7500875007750067500475004750
+00030000060300d0301b0401d0401b040120400c0400a040000400001004000010000000003000000000000004000050000600007000080000900009000080000600004000020000100000000001000010000100
+000100000d21011210072100421001210002100520005200052000520005200052000520005200052000520005200042000420000200042000020003200032000020003200002000320004200082000420007200
+00020900233502435024350243502435024350243501c350253502c350303502f3502a350143500d3500a350053500235008350383503f3503b350353502e3502a35020350153500835002350003500235000350
